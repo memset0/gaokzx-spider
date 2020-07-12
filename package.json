@@ -19,6 +19,7 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.3",
     "download": "^8.0.0",
+    "html-pdf": "^2.2.0",
     "images": "^3.2.2",
     "rd": "^2.0.1",
     "superagent": "^5.3.1",
