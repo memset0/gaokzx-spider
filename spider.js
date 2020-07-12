@@ -17,8 +17,11 @@ async function downloadFile(src, dst) {
 async function spiderPage(pageCurrent, cnt = 1) {
 	const methods = {
 		'http://www.gaokzx.com/': {
-			titleSelector: '.page-content h1',
-			imageSelector: '#content img',
+			selector: {
+				title: '.page-content h1',
+				image: '#content img',
+				next: 'a.next',
+			}
 		},
 	};
 
@@ -33,8 +36,8 @@ async function spiderPage(pageCurrent, cnt = 1) {
 				}
 			});
 			let $ = cheerio.load(res.text);
-			let title = $(method.titleSelector).text().trim();
-			let images = Array.from($(method.imageSelector)).map((element) => $(element).attr('src'));
+			let title = $(method.selector.title).text().trim();
+			let images = Array.from($(method.selector.image)).map((element) => $(element).attr('src'));
 			console.log(title, images);
 			images.forEach((image, index) => {
 				downloadFile(
@@ -42,7 +45,7 @@ async function spiderPage(pageCurrent, cnt = 1) {
 					path.join(__dirname, 'dist', title, cnt + (images.length == 1 ? '' : '.' + index) + path.extname(image))
 				);
 			});
-			let pageNext = $('a.next').attr('href');
+			let pageNext = $(method.selector.next).attr('href');
 			if (pageNext !== '' && pageNext !== '#' && pageNext != pageCurrent) {
 				spiderPage(url.resolve(pageCurrent, pageNext), cnt + 1);
 			}
