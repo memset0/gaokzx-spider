@@ -6,6 +6,8 @@ const cheerio = require('cheerio');
 const download = require('download');
 const superagent = require('superagent');
 
+const config = YAML.parse(fs.readFileSync(path.join(__dirname, './config.yml')).toString());
+
 async function downloadFile(src, dst) {
 	fs.mkdirSync(path.dirname(dst), { recursive: true });
 	if (!fs.existsSync(dst)) {
@@ -23,11 +25,18 @@ async function spiderPage(pageCurrent, cnt = 1) {
 				next: 'a.next',
 			}
 		},
+		'https://news.koolearn.com': {
+			selector: {
+				title:'.xqy_core_tit',
+				image:'.xqy_core_text img',
+				next:'#page a:last-child',
+			},
+		}
 	};
 
 	return await superagent
 		.get(pageCurrent)
-		.set('user-agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36')
+		.set('user-agent', config.ua)
 		.then(function (res) {
 			let method = null;
 			Object.keys(methods).forEach(website => {
@@ -46,14 +55,13 @@ async function spiderPage(pageCurrent, cnt = 1) {
 				);
 			});
 			let pageNext = $(method.selector.next).attr('href');
-			if (pageNext !== '' && pageNext !== '#' && pageNext != pageCurrent) {
+			if (pageNext && pageNext !== '#' && pageNext != pageCurrent) {
 				spiderPage(url.resolve(pageCurrent, pageNext), cnt + 1);
 			}
 		});
 }
 
 function main() {
-	const config = YAML.parse(fs.readFileSync(path.join(__dirname, './config.yml')).toString());
 	config.links.forEach(link => {
 		spiderPage(link);
 	});
