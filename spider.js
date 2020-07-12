@@ -7,26 +7,18 @@ const download = require('download');
 const superagent = require('superagent');
 
 async function downloadFile(src, dst) {
-	console.log('downloadFile', src, dst);
 	fs.mkdirSync(path.dirname(dst), { recursive: true });
-	fs.writeFileSync(dst, await download(src));
+	if (!fs.existsSync(dst)) {
+		console.log('downloadFile', src, dst);
+		fs.writeFileSync(dst, await download(src));
+	}
 }
 
 async function spiderPage(pageCurrent, cnt = 1) {
 	const methods = {
-		'http://www.gaokzx.com/': (res) => {
-			let $ = cheerio.load(res.text);
-			let title = $('.page-content h1').text().trim();
-			let image = $('#content img').attr('src');
-			console.log(title, image);
-			downloadFile(
-				url.resolve(pageCurrent, image),
-				path.join(__dirname, 'dist', title, cnt + path.extname(image))
-			);
-			let pageNext = $('a.next').attr('href');
-			if (pageNext !== '' && pageNext !== '#') {
-				spiderPage(url.resolve(pageCurrent, pageNext), cnt + 1);
-			}
+		'http://www.gaokzx.com/': {
+			titleSelector: '.page-content h1',
+			imageSelector: '#content img',
 		},
 	};
 
@@ -34,12 +26,26 @@ async function spiderPage(pageCurrent, cnt = 1) {
 		.get(pageCurrent)
 		.set('user-agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36')
 		.then(function (res) {
+			let method = null;
 			Object.keys(methods).forEach(website => {
 				if (pageCurrent.startsWith(website)) {
-					methods[website](res);
-					return false;
+					method = methods[website];
 				}
-			})
+			});
+			let $ = cheerio.load(res.text);
+			let title = $(method.titleSelector).text().trim();
+			let images = Array.from($(method.imageSelector)).map((element) => $(element).attr('src'));
+			console.log(title, images);
+			images.forEach((image, index) => {
+				downloadFile(
+					url.resolve(pageCurrent, image),
+					path.join(__dirname, 'dist', title, cnt + (images.length == 1 ? '' : '.' + index) + path.extname(image))
+				);
+			});
+			let pageNext = $('a.next').attr('href');
+			if (pageNext !== '' && pageNext !== '#' && pageNext != pageCurrent) {
+				spiderPage(url.resolve(pageCurrent, pageNext), cnt + 1);
+			}
 		});
 }
 
